@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'mahmoodkhalaila/cloudship'
-        APP_SERVER   = '10.0.2.237'
+        DOCKER_IMAGE    = 'mahmoodkhalaila/cloudship'
+        APP_SERVER      = '10.0.2.237'
+        APPLICATION_URL = 'http://cloudship-alb-63773051.us-east-1.elb.amazonaws.com'
     }
 
     options {
@@ -107,11 +108,36 @@ pipeline {
                 }
             }
         }
+
+        stage('Health Check') {
+            steps {
+                sh '''
+                    for attempt in $(seq 1 12); do
+                        if curl \
+                            --fail \
+                            --silent \
+                            --show-error \
+                            "${APPLICATION_URL}/health"; then
+
+                            echo ""
+                            echo "Application health check passed."
+                            exit 0
+                        fi
+
+                        echo "Waiting for application... attempt ${attempt}/12"
+                        sleep 10
+                    done
+
+                    echo "Application health check failed."
+                    exit 1
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'CloudShip was tested, built, pushed, and deployed successfully!'
+            echo 'CloudShip was tested, built, pushed, deployed, and verified successfully!'
         }
 
         failure {

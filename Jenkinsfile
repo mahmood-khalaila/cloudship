@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'mahmoodkhalaila/cloudship'
+        APP_SERVER   = '10.0.2.237'
     }
 
     options {
@@ -77,11 +78,40 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'app-server-ssh',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
+                    sh '''
+                        ssh \
+                          -o StrictHostKeyChecking=accept-new \
+                          -i "${SSH_KEY}" \
+                          "${SSH_USER}@${APP_SERVER}" \
+                          "
+                            set -e
+                            docker pull ${DOCKER_IMAGE}:latest
+                            docker rm -f cloudship || true
+                            docker run -d \
+                              --name cloudship \
+                              --restart unless-stopped \
+                              -p 8000:8000 \
+                              ${DOCKER_IMAGE}:latest
+                          "
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'CloudShip CI and Docker push completed successfully!'
+            echo 'CloudShip was tested, built, pushed, and deployed successfully!'
         }
 
         failure {

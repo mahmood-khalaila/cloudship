@@ -1,0 +1,2 @@
+admin_cidr         = "YOUR_PUBLIC_IP/32"
+ssh_public_key_path = "~/.ssh/cloudship.pub"

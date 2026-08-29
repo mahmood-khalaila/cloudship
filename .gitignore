@@ -14,6 +14,7 @@ app/venv/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+*.tfplan
 
 # macOS
 .DS_Store

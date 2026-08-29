@@ -5,13 +5,24 @@ CloudShip is an end-to-end DevOps project that automatically tests, containerize
 ## Architecture
 
 ```mermaid
-flowchart LR
-    GitHub["GitHub"] --> Jenkins["Jenkins EC2"]
-    Jenkins --> DockerHub["Docker Hub"]
-    Jenkins --> App["Application EC2"]
-    DockerHub --> App
-    User["User"] --> ALB["Application Load Balancer"]
-    ALB --> App
+flowchart TB
+    GitHub["GitHub Repository"]
+
+    subgraph VPC["AWS VPC — Two Public Subnets in Two AZs"]
+        Jenkins["Jenkins EC2"]
+        ALB["Application Load Balancer"]
+        App["Application EC2"]
+    end
+
+    DockerHub["Docker Hub"]
+    User["User"]
+
+    GitHub -->|SCM Poll / Code Change| Jenkins
+    Jenkins -->|Push Docker Image| DockerHub
+    Jenkins -->|SSH Deployment| App
+    DockerHub -->|Pull Latest Image| App
+    User -->|HTTP Request| ALB
+    ALB -->|Forward to Port 8000| App
 ```
 
 Terraform provisions a VPC, two public subnets, Jenkins and application EC2 instances, security groups, and an Application Load Balancer.

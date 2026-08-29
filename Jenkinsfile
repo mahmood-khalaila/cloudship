@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = 'mahmoodkhalaila/cloudship'
+    }
+
     options {
         skipDefaultCheckout(true)
     }
@@ -39,15 +43,49 @@ pipeline {
                 }
             }
         }
+
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    docker build \
+                      -t ${DOCKER_IMAGE}:${BUILD_NUMBER} \
+                      -t ${DOCKER_IMAGE}:latest \
+                      .
+                '''
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        echo "${DOCKERHUB_TOKEN}" |
+                          docker login \
+                            --username "${DOCKERHUB_USERNAME}" \
+                            --password-stdin
+
+                        docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                        docker push ${DOCKER_IMAGE}:latest
+                        docker logout
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'CloudShip CI passed successfully!'
+            echo 'CloudShip CI and Docker push completed successfully!'
         }
 
         failure {
-            echo 'CloudShip CI failed. Check the stage logs.'
+            echo 'CloudShip pipeline failed. Check the stage logs.'
         }
 
         always {
